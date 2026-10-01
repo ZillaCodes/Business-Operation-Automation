@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101b35" />
+    <title>Business Operation Data API | Operations Desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <p class="eyebrow">BUSINESS OPERATION DATA API</p>
+            <h1>Operations desk</h1>
+          </div>
+        </div>
+        <button id="refresh-button" class="refresh-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2.8L3 10m0 0V6m0 4h4m-3 3a8.1 8.1 0 0 0 15.5 2.8L21 14m0 0v4m0-4h-4" /></svg>
+          <span>Refresh data</span>
+        </button>
+      </header>
+
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="section-kicker">LIVE WORKFLOW OVERVIEW</p>
+          <h2 id="page-title">Keep every operation<br />moving forward.</h2>
+        </div>
+        <p class="intro-copy">A focused view of incoming customer requests, invoices, and purchase orders requiring your team’s attention.</p>
+      </section>
+
+      <section id="error-state" class="error-state" role="alert" hidden>
+        <div class="error-icon" aria-hidden="true">!</div>
+        <div>
+          <strong>We couldn’t load the workflow data.</strong>
+          <p>Check that the Business Operation Data API webhook is available, then try again.</p>
+        </div>
+        <button id="retry-button" class="text-button" type="button">Try again</button>
+      </section>
+
+      <section class="overview" aria-labelledby="overview-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">AT A GLANCE</p>
+            <h2 id="overview-title">Today’s workload</h2>
+          </div>
+          <p id="last-updated" class="last-updated" aria-live="polite">Loading latest data…</p>
+        </div>
+        <div class="metrics-grid">
+          <article class="hero-metric metric-card">
+            <div>
+              <p>Total requests</p>
+              <strong id="total-requests">—</strong>
+              <span>All requests in the workflow</span>
+            </div>
+            <div class="metric-orbit" aria-hidden="true"><i></i><b></b></div>
+          </article>
+          <article class="metric-card compact-card"><p>Processing</p><strong id="processing">—</strong><span class="metric-note progress">Currently in motion</span></article>
+          <article class="metric-card compact-card"><p>Completed</p><strong id="completed">—</strong><span class="metric-note positive">Successfully resolved</span></article>
+          <article class="metric-card compact-card"><p>Requires attention</p><strong id="requires-attention">—</strong><span class="metric-note warning">Needs a decision</span></article>
+          <article class="metric-card compact-card"><p>Requests today</p><strong id="requests-today">—</strong><span class="metric-note neutral">Received since midnight</span></article>
+        </div>
+      </section>
+
+      <section class="queue-section" aria-labelledby="queue-title">
+        <div class="section-heading queue-heading">
+          <div><p class="section-kicker">INCOMING WORK</p><h2 id="queue-title">Request queue</h2></div>
+          <div class="queue-count"><span id="queue-count">0</span> items</div>
+        </div>
+        <div class="table-card">
+          <div id="loading-state" class="loading-state" aria-live="polite"><span class="loading-dot"></span>Retrieving requests…</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Request</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Priority</th></tr></thead>
+              <tbody id="queue-body"></tbody>
+            </table>
+          </div>
+          <div id="empty-state" class="empty-state" hidden>
+            <div class="empty-icon" aria-hidden="true">✓</div>
+            <strong>No requests in the queue</strong>
+            <p>New workflow requests will appear here when they arrive.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
