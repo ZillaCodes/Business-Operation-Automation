@@ -1,0 +1,2629 @@
+{
+  "name": "Business operations automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "business-operations",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        16
+      ],
+      "id": "784f1372-f5af-42a3-bc06-d0886fefd7bb",
+      "name": "Webhook",
+      "webhookId": "6388678d-0219-433f-aec0-16d377ce4706"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d732768f-4b40-4519-82c1-f883f71c36dc",
+              "name": "sender_name",
+              "value": "={{ $json.body.name  }}",
+              "type": "string"
+            },
+            {
+              "id": "b7d343cf-8d2a-45db-9f0f-8b4e6240faba",
+              "name": "sender_email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "5ba94ec0-d02f-472c-a960-ee201265f7c3",
+              "name": "message_text",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "0c940edd-25d0-4c82-8cb9-1fcd3cd30446",
+              "name": "source",
+              "value": "=website",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        16
+      ],
+      "id": "4d0c2259-f615-42f4-98d7-68e27b84b53f",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "86ae19bb-b3c0-4782-8972-5f3973973952",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kx2R88vOonDRnSlH",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "825b88ac-a3cb-420c-93d9-bc02ec53d255",
+              "name": "sender_name",
+              "value": "={{ $json.from.value[0].name }}",
+              "type": "string"
+            },
+            {
+              "id": "c0dd6a2d-bc96-4c02-8cb4-ff395785f132",
+              "name": "sender_email",
+              "value": "={{ $json.from.value[0].address }}",
+              "type": "string"
+            },
+            {
+              "id": "02b1fd4e-404d-438b-ace6-068701e1a9dd",
+              "name": "message_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "203bc050-efbb-446e-b25f-3bf138888f4b",
+              "name": "source",
+              "value": "email",
+              "type": "string"
+            },
+            {
+              "id": "333c1cb2-8f2a-4fb7-86f5-396fecda68b6",
+              "name": "attachment_filename",
+              "value": "={{ $binary.attachment_0.fileName }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        -128
+      ],
+      "id": "f1237ac0-c3be-4e0a-9879-c37f3e41f08f",
+      "name": "Normalize data 2s"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        496,
+        -48
+      ],
+      "id": "5e3f50db-0dcb-41e2-8449-bea5f36d3676",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Name: {{ $json.sender_name }} Email: {{ $json.sender_email }} Message: {{ $json.message_text }} Source: {{ $json.source }} Attachment filename: {{ $json.attachment_filename }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {
+          "system": "You are a business request classifier. Given a customer request, classify it and extract key details.  Use these exact definitions to choose the type:    • invoice: a bill or request for payment. Usually includes an amount, invoice number, line items, vendor/sender billing details, or a due date. This can appear as plain text in the message body, OR as an attached file — PDF, DOCX, DOC, CSV, XLS, or XLSX. If an attachment is present and its filename or content suggests billing (e.g. \"Invoice_1042.pdf\", \"invoice\", \"statement\", \"bill\"), classify as invoice even if the message body itself is brief or empty.  - complaint: the customer reports a problem with an order, product, or service already received. - enquiry: the customer is asking a question before making a decision (pricing, availability, how something works). - purchase_order: a request to buy or supply goods/services, usually with quantities and item descriptions, but not yet a bill. - internal_request: a request from staff/internal team members, not an external customer. - document: any general file or information that doesn't fit the categories above.  The \"type\" field must be exactly one of these six strings, with no variation: enquiry, complaint, invoice, purchase_order, internal_request, document. Never invent another word.  Respond with ONLY valid JSON, no explanation, no markdown formatting — matching exactly this schema:  {   \"type\": \"enquiry\" | \"complaint\" | \"invoice\" | \"purchase_order\" | \"internal_request\" | \"document\",   \"priority\": \"low\" | \"medium\" | \"high\",   \"summary\": \"one sentence summary\",   \"extracted\": {     \"order_number\": string or null,     \"amount\": number or null,     \"sender_name\": string or null,     \"sender_email\": string or null   },   \"requires_attention\": true or false }"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -48
+      ],
+      "id": "f40c0f5f-e578-4b44-91a6-232e71568b6a",
+      "name": "Message a model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "M3UmoycqtodIRKGm",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\n\nconst original = $('Merge').first().json;\n\nvar dedupKey;\nif (parsed.extracted.order_number) {\n  dedupKey = original.sender_email + '_' + parsed.extracted.order_number;\n} else {\n  dedupKey = original.sender_email + '_' + parsed.type;\n}\n\nconst result = Object.assign({}, parsed, {\n  sender_name: original.sender_name,\n  sender_email: original.sender_email,\n  source: original.source,\n  received_at: new Date().toISOString(),\n  dedup_key: dedupKey\n});\n\nreturn [{ json: result }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -16
+      ],
+      "id": "28b2d35b-c03b-452c-b379-6cafd99ea2d8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{ $now.toMillis() }}",
+            "sender_name": "={{ $('Code in JavaScript').item.json.sender_name }}",
+            "sender_email": "={{ $('Code in JavaScript').item.json.sender_email }}",
+            "source": "={{ $('Code in JavaScript').item.json.source }}",
+            "type": "={{ $('Code in JavaScript').item.json.type }}",
+            "priority": "={{ $('Code in JavaScript').item.json.priority }}",
+            "summary": "={{ $('Code in JavaScript').item.json.summary }}",
+            "amount": "={{ $('Code in JavaScript').item.json.extracted.amount }}",
+            "created_at": "={{ $('Code in JavaScript').item.json.received_at }}",
+            "status": "New",
+            "attention": "={{ $('Code in JavaScript').item.json.requires_attention }}",
+            "updated_at": "={{ $('Code in JavaScript').item.json.received_at }}",
+            "dedup_key": "={{ $('Code in JavaScript').item.json.dedup_key }}",
+            "order_number": "={{ $('Code in JavaScript').item.json.extracted.order_number }}",
+            "assigned team": "={{ $('assigned teamm').item.json.assigned_team }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assigned team",
+              "displayName": "assigned team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2016,
+        -144
+      ],
+      "id": "9dbfa18e-973f-4ba2-8cae-749e897eee8c",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "dedup_key",
+              "lookupValue": "={{ $json.dedup_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1696,
+        32
+      ],
+      "id": "15dd108a-8882-4b10-bd52-c427207a1243",
+      "name": "Lookup",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b66b806f-09f5-4fa8-aca4-07a170abe143",
+              "leftValue": "={{ $json.dedup_key }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "e6a70f87-0e1c-4551-a437-bafd7f6b6544",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        160
+      ],
+      "id": "421f5fb0-462a-4719-90f3-4c5825690a2d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "priority": "high",
+            "summary": "={{ $('Code in JavaScript').item.json.summary }} (Customer followed up again via ' + $('Code in JavaScript').item.json.source + ' on ' + $('Code in JavaScript').item.json.received_at + ')",
+            "updated_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1904,
+        -288
+      ],
+      "id": "d9756672-253a-4abb-8f67-6228653d10df",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "invoice",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bd80bb28-81d2-4e84-84a1-3760f72fb03a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e00f55b6-dc34-4fcd-af78-7a5fc67fff4a",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "complaint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "15a2978c-4ae7-4d2e-a395-90fb7608990c",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "enquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "35f23432-c571-421c-8d2e-c71bd2cf60ce",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "purchase_order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "39630eb3-a7ac-4f1c-abd4-2613052b8b83",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "internal_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "28ab2b87-f707-4542-bf14-f01be59186c6",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "document",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        -496
+      ],
+      "id": "a0627a4e-f874-4c89-b1c6-ce5877ff4910",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Omo52IlLzm5AIWuQ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Omo52IlLzm5AIWuQ",
+          "cachedResultName": "My project — Invoice Automation"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        -464
+      ],
+      "id": "85ccc044-8f07-4dc8-a8c7-ab687758f12b",
+      "name": "Call 'Invoice Automation'"
+    },
+    {
+      "parameters": {
+        "jsCode": "let original;\n\ntry {\n  original = $('Gmail Trigger').item;\n} catch (e) {\n  original = null;\n}\n\nif (!original) {\n  // This request didn't come from email — no attachment to hand off\n  throw new Error('Invoice routing expects an email with an attachment. This request came from the website form, which does not support attachments yet.');\n}\n\nreturn [{\n  json: original.json,\n  binary: original.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -528
+      ],
+      "id": "60c9c4b5-eae9-4267-ba5a-b8bb33b15d29",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "chatId": "1257454702",
+        "text": "=🆕 New request received Type: {{ $('Code in JavaScript').item.json.type }} From: {{ $('Code in JavaScript').item.json.sender_name }} ({{ $('Code in JavaScript').item.json.sender_email }}) Priority: {{ $('Code in JavaScript').item.json.priority }} Summary: {{ $('Code in JavaScript').item.json.summary }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2016,
+        48
+      ],
+      "id": "cc46f10c-a04c-4881-bf03-bddcef30dbae",
+      "name": "Send a text message",
+      "webhookId": "f338e354-0364-4520-ab89-8fb668cddd5f",
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{ $now.toMillis()}}",
+            "sender_name": "={{ $('Code in JavaScript').item.json.sender_name }}",
+            "sender_email": "={{ $('Code in JavaScript').item.json.sender_email }}",
+            "source": "={{ $('Code in JavaScript').item.json.source }}",
+            "type": "invoice",
+            "priority": "={{ $('Code in JavaScript').item.json.priority }}",
+            "summary": "Invoiced received, see invoice log for details",
+            "order_number": "={{ $json['Invoice _no'] }}",
+            "amount": "={{ $json.amount }}",
+            "status": "Logged",
+            "attention": "={{ $json.total_mismatch === true || $json.reason === 'Duplicate invoice number' ? true : false }}",
+            "created_at": "={{ $now.toISO() }}",
+            "updated_at": "={{ $now.toISO() }}",
+            "dedup_key": "={{ $('Code in JavaScript').item.json.dedup_key }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1792,
+        -464
+      ],
+      "id": "4d09bf72-4fb3-4e11-bae4-4e5fc055bb77",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2b20f69a-4cb2-4e9b-8400-645b24a3ce4c",
+              "name": "assigned_team",
+              "value": "customer support",
+              "type": "string"
+            },
+            {
+              "id": "201e1259-3dd6-4913-8f72-72b1b71f4a58",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1264,
+        -320
+      ],
+      "id": "f4aa14d1-d142-4588-96f0-c1dfc633b770",
+      "name": "assigned team"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac7844f0-03e8-416f-b6c8-60d5e57afbd2",
+              "name": "assigned_team",
+              "value": "Internal Team",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1168,
+        -144
+      ],
+      "id": "ced4da7c-a06a-4fcf-8245-c4352d06e0fb",
+      "name": "Internal request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.item.json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        16
+      ],
+      "id": "9b86fb8a-c1e7-4059-95cc-70a90c0ce66b",
+      "name": "assigned teamm"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "667f4e48-be94-480a-9120-7855e0adfee8",
+              "leftValue": "={{ $('Code in JavaScript').first().json.type }}",
+              "rightValue": "purchase_order",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1424,
+        -128
+      ],
+      "id": "7c4fe9cd-f303-4ae8-ae81-e29c01db3e68",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Code in JavaScript').first().json.sender_email }}",
+        "subject": "=Re: Your {{ $('Code in JavaScript').first().json.type }}",
+        "message": "=Hi {{ $('Code in JavaScript').first().json.sender_name }},\n\nThank you for reaching out. We've received your {{ $('Code in JavaScript').first().json.type }} and a member of our team will get back to you shortly.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        -224
+      ],
+      "id": "9c5eef42-58cc-482b-b931-26cd8e99768e",
+      "name": "Send a message",
+      "webhookId": "b62f0844-a57a-4f42-99df-048afbc2153f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kx2R88vOonDRnSlH",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        80,
+        -288
+      ],
+      "id": "86b645a5-53f4-4a80-9928-cc4f525e7133",
+      "name": "Telegram Trigger",
+      "webhookId": "e7f236ec-1830-4227-83d2-3f0ff0611529",
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "dedup_key",
+              "lookupValue": "={{ $json.dedup_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        -256
+      ],
+      "id": "7de50b14-000d-459e-bf18-61d435d56078",
+      "name": "Telegram lookup",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1257454702",
+        "text": "=📦 New Purchase Order From: {{ $('Code in JavaScript').first().json.sender_name }} ({{ $('Code in JavaScript').first().json.sender_email }}) Details: {{ $('Code in JavaScript').first().json.summary }}  Approve or decline this order?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅Approve",
+                    "additionalFields": {
+                      "callback_data": "=approve|{{ $('Code in JavaScript').first().json.dedup_key }}"
+                    }
+                  },
+                  {
+                    "text": "❌Decline",
+                    "additionalFields": {
+                      "callback_data": "=decline|{{ $('Code in JavaScript').first().json.dedup_key }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1504,
+        144
+      ],
+      "id": "3b96ca22-146b-477b-a667-d39c8007d75e",
+      "name": "Send a text message1",
+      "webhookId": "b93bcd82-de13-479c-9911-1ccb5d3163bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const callback = $input.first().json.callback_query;\nconst [action, dedupKey] = callback.data.split('|');\n\nreturn [{\n  json: {\n    action: action,\n    dedup_key: dedupKey,\n    telegram_callback_id: callback.id,\n    telegram_chat_id: callback.message.chat.id,\n    telegram_message_id: callback.message.message_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -288
+      ],
+      "id": "7ccab1d7-3b4a-463c-992e-50ad7bfb2821",
+      "name": "Telegram action code"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.sender_email }}",
+        "subject": "RE: Order Received",
+        "message": "=Hi {{ $json.sender_name }},  We are ready to proceed with your order.  To move forward, please provide the following: - Delivery address and preferred delivery date and any special delivery instructions.\nRegarding payment: We require a 50% deposit upfront, with the balance due on delivery, payment is due within 7 days of invoice  Once we have your delivery details, we'll send an invoice for the order total.  Order reference: {{ $json.dedup_key }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        -704
+      ],
+      "id": "dcf9a97f-4d11-426d-bb17-75131bb74c2a",
+      "name": "Send a message1",
+      "webhookId": "eefe921e-222b-4039-9bf2-b9b71d3abb8a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kx2R88vOonDRnSlH",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.sender_email}}",
+        "subject": "RE: Order Received",
+        "message": "=Hi {{ $json.sender_name }},  Unfortunately, we won't be able to meet your timeline, and we're unable to proceed with your order at this time.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        -560
+      ],
+      "id": "00a4a847-3fdc-4971-af47-6b845d35693e",
+      "name": "Send a message2",
+      "webhookId": "73348991-26ba-4852-b4d8-17a419f1c785",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kx2R88vOonDRnSlH",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "approved",
+            "dedup_key": "={{ $('Telegram action code').item.json.dedup_key }}"
+          },
+          "matchingColumns": [
+            "dedup_key"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assigned team",
+              "displayName": "assigned team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        -672
+      ],
+      "id": "cf27fb8c-802c-412c-a380-ed3f0e08d6a9",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "dedup_key": "={{ $('Telegram action code').item.json.dedup_key }}",
+            "status": "Declined"
+          },
+          "matchingColumns": [
+            "dedup_key"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assigned team",
+              "displayName": "assigned team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        -544
+      ],
+      "id": "b0a828af-e673-4786-b068-83f84cdcfd82",
+      "name": "Update row in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram action code').item.json.telegram_callback_id }}",
+        "additionalFields": {
+          "text": "Order Approved ✅"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        -672
+      ],
+      "id": "9216b9bd-802f-475c-b92c-1ff467aab9da",
+      "name": "Answer Query a callback",
+      "webhookId": "0797f575-6ad3-462a-b285-6fd58ad84b4a",
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram action code').item.json.telegram_callback_id }}",
+        "additionalFields": {
+          "text": "Order Declined❌"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        -560
+      ],
+      "id": "ef48379b-7ea1-4942-b346-262cc0bd237b",
+      "name": "Answer Query a callback1",
+      "webhookId": "28d2df66-09a0-4758-b7db-d08de2cca976",
+      "notesInFlow": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Telegram action code').item.json.action }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "5f9e6599-ec8b-4016-9b6c-0b9aea6f7f2b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9e44eafb-dc98-49f0-bd10-474bfa8e8637",
+                    "leftValue": "={{ $('Telegram action code').item.json.action }}",
+                    "rightValue": "decline",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "af03f442-9297-42ab-8d0f-742998ea146c",
+                    "leftValue": "={{ $('Telegram action code').item.json.action }}",
+                    "rightValue": "processing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "80a56713-8105-490a-99a5-d8e8bdfd132f",
+                    "leftValue": "={{ $('Telegram action code').item.json.action }}",
+                    "rightValue": "completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        -640
+      ],
+      "id": "63a4efb0-9ad8-490c-a291-580d7cac36c1",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "dedup_key": "={{ $('Telegram action code').item.json.dedup_key }}",
+            "status": "={{ $('Telegram action code').item.json.action === 'processing' ? 'Processing' : 'Completed' }}"
+          },
+          "matchingColumns": [
+            "dedup_key"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender_email",
+              "displayName": "sender_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attention",
+              "displayName": "attention",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dedup_key",
+              "displayName": "dedup_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assigned team",
+              "displayName": "assigned team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        592,
+        -400
+      ],
+      "id": "7d7e69be-391d-4d68-b524-ce24be630f59",
+      "name": "Update row in sheet3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1257454702",
+        "text": "=Update status on {{ $('Code in JavaScript').item.json.type }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "processing",
+                    "additionalFields": {
+                      "callback_data": "=processing|{{ $('Code in JavaScript').first().json.dedup_key }}"
+                    }
+                  },
+                  {
+                    "text": "completed",
+                    "additionalFields": {
+                      "callback_data": "=completed|{{ $('Code in JavaScript').first().json.dedup_key }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2048,
+        256
+      ],
+      "id": "f5871192-6406-46e8-84fb-edde60472034",
+      "name": "Send a text message2",
+      "webhookId": "2c21f0d4-9ed5-4e45-b586-cd9a149112e7",
+      "credentials": {
+        "telegramApi": {
+          "id": "SFj8E1ylhTJQxvlR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "complaint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "233e80ff-0d74-478b-b4a7-1744e92af1ed"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ee44688f-525a-4e6b-90fe-5f9296d392c0",
+                    "leftValue": "={{ $('Code in JavaScript').item.json.type }}",
+                    "rightValue": "enquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1808,
+        288
+      ],
+      "id": "666ac42b-2d26-4787-926b-bc955ca7a821",
+      "name": "Switch2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize data 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize data 2s": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "assigned team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "assigned team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "assigned team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Internal request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Call 'Invoice Automation'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Invoice Automation'": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "assigned team": {
+      "main": [
+        [
+          {
+            "node": "assigned teamm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internal request": {
+      "main": [
+        [
+          {
+            "node": "assigned teamm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "assigned teamm": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Telegram action code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message1": {
+      "main": [
+        [
+          {
+            "node": "Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram action code": {
+      "main": [
+        [
+          {
+            "node": "Telegram lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram lookup": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Answer Query a callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet2": {
+      "main": [
+        [
+          {
+            "node": "Answer Query a callback1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ce4f038a-a388-430d-a37c-85ef23b79eca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a5e05bc78fcfcb24ab31da92754db931e826dd2be7b0b6cdefabd08ec0bb14c"
+  },
+  "nodeGroups": [],
+  "id": "52WDlDlfHY0v5iEc",
+  "tags": []
+}

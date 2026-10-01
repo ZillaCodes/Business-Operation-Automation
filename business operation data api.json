@@ -1,0 +1,252 @@
+{
+  "name": "business operation data api",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "dashboard-data",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4319dd09-07e5-4fcf-b5b5-00a3e88c70e1",
+      "name": "Webhook",
+      "webhookId": "98c171fc-2653-4d7d-9fe0-6af3f82f5aa5"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40",
+          "mode": "list",
+          "cachedResultName": "request_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "request",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ows6NxihgruMujI2ly5C7O87NCn5Sdqxz_XKt6MxA40/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2e51c10c-bb79-4a80-a878-5f1217af716d",
+      "name": "request log sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1XqrEasAcmHlnKyPBCHmyieTla532H8_iOFPNowofiyE",
+          "mode": "list",
+          "cachedResultName": "Invoice Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XqrEasAcmHlnKyPBCHmyieTla532H8_iOFPNowofiyE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "invoice",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XqrEasAcmHlnKyPBCHmyieTla532H8_iOFPNowofiyE/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        -144
+      ],
+      "id": "a0b4de88-eb7a-4fc6-80e2-c3042a10b5a5",
+      "name": "Invoice sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1xdReP77V43hJ2tajyzDRRQsS72FCgC0IPrB4w7UHl-Y",
+          "mode": "list",
+          "cachedResultName": "Flagged Invoices",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xdReP77V43hJ2tajyzDRRQsS72FCgC0IPrB4w7UHl-Y/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xdReP77V43hJ2tajyzDRRQsS72FCgC0IPrB4w7UHl-Y/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        160
+      ],
+      "id": "00611dca-7ec7-49a9-a4fd-869101cbf2d2",
+      "name": "flagged invoices",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MoN542hX0e5bvEBL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const requestLog = $('request log sheet').all().map(i => i.json);\nconst invoices = $('Invoice sheet').all().map(i => i.json);\nconst flagged = $('flagged invoices').all().map(i => i.json);\n\nconst today = new Date().toISOString().split('T')[0];\n\nconst totalRequests = requestLog.length + invoices.length + flagged.length;\nconst processing = requestLog.filter(r => r.status === 'Processing').length;\nconst completed = requestLog.filter(r => r.status === 'Completed').length;\nconst requiresAttention = requestLog.filter(r => r.attention === 'true' || r.attention === true).length + flagged.length;\nconst requestsToday = requestLog.filter(r => (r.created_at || '').startsWith(today)).length;\n\nconst queue = requestLog.map(r => ({\n  request: r.summary || r.order_number || r.request_id,\n  type: r.type,\n  status: r.status,\n  priority: r.priority\n}));\n\nreturn [{\n  json: {\n    overview: {\n      totalRequests: totalRequests,\n      processing: processing,\n      completed: completed,\n      requiresAttention: requiresAttention,\n      requestsToday: requestsToday\n    },\n    queue: queue\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -16
+      ],
+      "id": "63201d9d-e5ce-43bb-8b1d-cf18f3140a19",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "1ae26e9a-ea45-4da7-ae8e-1abb9a54c623",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        464,
+        -16
+      ],
+      "id": "0939bb06-f2bd-4fc5-8e81-7d14e78de8c5",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "request log sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Invoice sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "flagged invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "request log sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Invoice sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "flagged invoices": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ed9c7de7-a33e-4ce0-a48d-a10791e46c4c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a5e05bc78fcfcb24ab31da92754db931e826dd2be7b0b6cdefabd08ec0bb14c"
+  },
+  "nodeGroups": [],
+  "id": "BVFa7pHKORJNIFvi",
+  "tags": []
+}
